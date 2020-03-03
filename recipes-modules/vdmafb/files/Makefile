@@ -1,4 +1,4 @@
-obj-m := adau1361.o
+obj-m := vdmafb.o
 
 SRC := $(shell pwd)
 

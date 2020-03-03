@@ -4,3 +4,4 @@
 CONFIG_gpio-demo
 CONFIG_peekpoke
 CONFIG_adau1361
+CONFIG_vdmafb
