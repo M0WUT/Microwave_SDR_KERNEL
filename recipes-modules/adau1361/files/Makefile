@@ -1,4 +1,5 @@
-obj-m := adau1361.o
+obj-m := adau1361_combined.o
+adau1361_combined-objs := adau1361.o axi_iic.o
 
 SRC := $(shell pwd)
 

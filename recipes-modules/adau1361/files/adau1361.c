@@ -14,16 +14,7 @@
 *   with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
-#include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/slab.h>
-#include <linux/io.h>
-#include <linux/interrupt.h>
-
-#include <linux/of_address.h>
-#include <linux/of_device.h>
-#include <linux/of_platform.h>
+#include "axi_iic.h"
 
 /* Standard module information, edit as appropriate */
 MODULE_LICENSE("GPL");
@@ -36,60 +27,93 @@ MODULE_DESCRIPTION
 
 
 struct adau1361_local {
-	int irq;
-	unsigned long mem_start;
-	unsigned long mem_end;
-	void __iomem *base_addr;
+	struct iic_local iic;
 };
 
 static int adau1361_probe(struct platform_device *pdev)
 {
+	struct resource *r_irq; /* Interrupt resources */
 	struct resource *r_mem; /* IO mem resources */
 	struct device *dev = &pdev->dev;
-	struct adau1361_local *lp = NULL;
+	struct device_node *node_p = pdev->dev.of_node;
+	struct adau1361_local *adau1361_dev = NULL;
 	int rc = 0;
-	dev_info(dev, "Device Tree Probing\n");
+
+	printk(KERN_INFO "Probing ADAU1361 module");
 	/* Get iospace for the device */
 	r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!r_mem) {
 		dev_err(dev, "Invalid address passed in reg parameter\n");
 		return -ENODEV;
 	}
-	lp = (struct adau1361_local *) kmalloc(sizeof(struct adau1361_local), GFP_KERNEL);
-	if (!lp) {
+	adau1361_dev = (struct adau1361_local *) kmalloc(sizeof(struct adau1361_local), GFP_KERNEL);
+	if (!adau1361_dev) {
 		dev_err(dev, "Cound not allocate adau1361 device\n");
 		return -ENOMEM;
 	}
-	dev_set_drvdata(dev, lp);
-	lp->mem_start = r_mem->start;
-	lp->mem_end = r_mem->end;
+	dev_set_drvdata(dev, adau1361_dev);
+	adau1361_dev->iic.mem_start = r_mem->start;
+	adau1361_dev->iic.mem_end = r_mem->end;
 
-	if (!request_mem_region(lp->mem_start,
-				lp->mem_end - lp->mem_start + 1,
+	if (!request_mem_region(adau1361_dev->iic.mem_start,
+				adau1361_dev->iic.mem_end - adau1361_dev->iic.mem_start + 1,
 				DRIVER_NAME)) {
 		dev_err(dev, "Couldn't lock memory region at %p\n",
-			(void *)lp->mem_start);
+			(void *)adau1361_dev->iic.mem_start);
 		rc = -EBUSY;
 		goto error1;
 	}
 
-	lp->base_addr = ioremap(lp->mem_start, lp->mem_end - lp->mem_start + 1);
-	if (!lp->base_addr) {
+	adau1361_dev->iic.base_addr = ioremap(adau1361_dev->iic.mem_start, adau1361_dev->iic.mem_end - adau1361_dev->iic.mem_start + 1);
+	if (!adau1361_dev->iic.base_addr) {
 		dev_err(dev, "adau1361: Could not allocate iomem\n");
 		rc = -EIO;
 		goto error2;
 	}
 
-	dev_info(dev,"adau1361 at 0x%08x mapped to 0x%08x, irq=%d\n",
-		(unsigned int __force)lp->mem_start,
-		(unsigned int __force)lp->base_addr,
-		lp->irq);
+	/* Get IRQ for the device */
+	r_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (!r_irq) {
+		dev_info(dev, "no IRQ found\n");
+		dev_info(dev, "skeleton at 0x%08x mapped to 0x%08x\n",
+			(unsigned int __force)adau1361_dev->iic.mem_start,
+			(unsigned int __force)adau1361_dev->iic.base_addr);
+		return 0;
+	}
+
+	adau1361_dev->iic.irq = r_irq->start;
+	rc = request_irq(adau1361_dev->iic.irq, &iic_irq, 0, DRIVER_NAME, &adau1361_dev->iic);
+	if (rc) {
+		dev_err(dev, "testmodule: Could not allocate interrupt %d.\n",
+			adau1361_dev->iic.irq);
+		goto error3;
+	}
+
+	// Read device tree parameters and sanitise
+	rc = of_property_read_u32(node_p, "slave_address", &adau1361_dev->iic.slave_address);
+	if (rc) {
+		dev_err(&pdev->dev, "Can't parse I2C slave address\n");
+	}
+	#ifdef DEBUG
+		printk(KERN_INFO "ADAU1361: slave I2C address loaded as %04X", adau1361_dev->iic.slave_address);
+	#endif
+
+	// Initialise I2C peripheral
+	iic_init(&adau1361_dev->iic);
+	iic_write(&adau1361_dev->iic, 0x4019, 0xAA);
+
+	#ifdef DEBUG
+		printk(KERN_INFO "ADAU1361: All done, returning 0 now");
+	#endif
 	return 0;
 
+
+error3:
+	free_irq(adau1361_dev->iic.irq, adau1361_dev);
 error2:
-	release_mem_region(lp->mem_start, lp->mem_end - lp->mem_start + 1);
+	release_mem_region(adau1361_dev->iic.mem_start, adau1361_dev->iic.mem_end - adau1361_dev->iic.mem_start + 1);
 error1:
-	kfree(lp);
+	kfree(adau1361_dev);
 	dev_set_drvdata(dev, NULL);
 	return rc;
 }
@@ -97,10 +121,10 @@ error1:
 static int adau1361_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct adau1361_local *lp = dev_get_drvdata(dev);
-	iounmap(lp->base_addr);
-	release_mem_region(lp->mem_start, lp->mem_end - lp->mem_start + 1);
-	kfree(lp);
+	struct adau1361_local *adau1361_dev = dev_get_drvdata(dev);
+	iounmap(adau1361_dev->iic.base_addr);
+	release_mem_region(adau1361_dev->iic.mem_start, adau1361_dev->iic.mem_end - adau1361_dev->iic.mem_start + 1);
+	kfree(adau1361_dev);
 	dev_set_drvdata(dev, NULL);
 	return 0;
 }
@@ -124,9 +148,6 @@ static struct platform_driver adau1361_driver = {
 
 static int __init adau1361_init(void)
 {
-	printk("<1>Hello module world.\n");
-	printk("<1>Module parameters were ");
-
 	return platform_driver_register(&adau1361_driver);
 }
 
