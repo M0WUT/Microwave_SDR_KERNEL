@@ -32,7 +32,7 @@ struct adau1361_local {
 
 static int adau1361_probe(struct platform_device *pdev)
 {
-	struct resource *r_irq; /* Interrupt resources */
+	int r_irq; /* Interrupt resources */
 	struct resource *r_mem; /* IO mem resources */
 	struct device *dev = &pdev->dev;
 	struct device_node *node_p = pdev->dev.of_node;
@@ -71,9 +71,13 @@ static int adau1361_probe(struct platform_device *pdev)
 		goto error2;
 	}
 
+	// Request Mutex for the I2C TX Lock
+	mutex_init(&adau1361_dev->iic.tx_lock);
+
 	/* Get IRQ for the device */
-	r_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (!r_irq) {
+	//r_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	r_irq = platform_get_irq(pdev, 0);
+	if (r_irq < 0) {
 		dev_info(dev, "no IRQ found\n");
 		dev_info(dev, "skeleton at 0x%08x mapped to 0x%08x\n",
 			(unsigned int __force)adau1361_dev->iic.mem_start,
@@ -81,8 +85,9 @@ static int adau1361_probe(struct platform_device *pdev)
 		return 0;
 	}
 
-	adau1361_dev->iic.irq = r_irq->start;
-	rc = request_irq(adau1361_dev->iic.irq, &iic_irq, 0, DRIVER_NAME, &adau1361_dev->iic);
+	adau1361_dev->iic.irq = r_irq;
+	// rc = request_irq(adau1361_dev->iic.irq, &iic_irq, 0, DRIVER_NAME, &adau1361_dev->iic);
+	rc = devm_request_threaded_irq(&pdev->dev, r_irq, iic_irq, iic_irq_process, IRQF_ONESHOT, DRIVER_NAME, &adau1361_dev->iic);
 	if (rc) {
 		dev_err(dev, "testmodule: Could not allocate interrupt %d.\n",
 			adau1361_dev->iic.irq);
