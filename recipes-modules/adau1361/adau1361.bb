@@ -7,6 +7,7 @@ inherit module
 
 SRC_URI = "file://Makefile \
            file://adau1361.c \
+	   file://adau1361.h \
 	   file://axi_iic.h \
 	   file://axi_iic.c \
 	   file://COPYING \

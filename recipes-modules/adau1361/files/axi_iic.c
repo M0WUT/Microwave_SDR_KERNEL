@@ -216,12 +216,13 @@ static void iic_write_msg(struct iic_local *dev, struct i2c_msg *msg, int msg_nu
 uint32_t iic_write(struct iic_local *dev, uint16_t reg_address, uint8_t data) {
     // DEBUG
     struct i2c_msg msg;
-    uint8_t x[3] = {0x40, 0x19, 0x00};
+    uint8_t x[3] = {0x40, 0x00, 0x01};
     msg.addr = 0x38;
     msg.buf = &x[0];
     msg.len = 3;
     iic_write_msg(dev, &msg, 1);
     msleep(1000);
+
     return 0;
 }
 

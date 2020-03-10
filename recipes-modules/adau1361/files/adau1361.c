@@ -14,7 +14,7 @@
 *   with this program. If not, see <http://www.gnu.org/licenses/>.
 
 */
-#include "axi_iic.h"
+#include "adau1361.h"
 
 /* Standard module information, edit as appropriate */
 MODULE_LICENSE("GPL");
@@ -25,10 +25,37 @@ MODULE_DESCRIPTION
 
 #define DRIVER_NAME "adau1361"
 
+// Load default settings
+static void adau1361_load_defaults(struct adau1361_local *dev){
 
-struct adau1361_local {
-	struct iic_local iic;
-};
+	// PLL
+	dev->pll.pll_mode = PLL_DISABLED;
+	dev->pll.core_clock_ratio = FSx256;
+
+	// Inputs
+	dev->mic_detect_enabled = 0;
+	dev->operational_mode = NORMAL;
+	dev->left_record_mixer.input_mode = IN_N;
+	dev->left_record_mixer.gain = 0;
+	dev->right_record_mixer = INPUT_DISABLED;
+
+	// Misc
+	dev->bclk_pol = RISING_EDGE;
+	dev->lrclk_pol = RISING_EDGE;
+
+	//Outputs
+	dev->left_playback_mixer.output_mode = LEFT_DAC;
+	dev->left_playback_mixer.gain = 0;
+	dev->right_playback_mixer.output_mode = RIGHT_DAC;
+	dev->right_playback_mixer.gain = 0;
+
+	dev->headphones.enabled = 1;
+	dev->headphones.muted = 0;
+	dev->headphones.left_volume = 63;
+	dev->headphones.right_volume = 63;
+	dev->line_out.muted = 1;
+}
+
 
 static int adau1361_probe(struct platform_device *pdev)
 {
