@@ -29,7 +29,7 @@ struct pll_settings {
     uint8_t pll_input_divider;
 
     core_clock_ratio_t core_clock_ratio;
-}
+};
 
 struct input_mixer {
     adc_input_t input_mode;  // Which source goes to the mixer input
@@ -78,6 +78,6 @@ struct adau1361_local {
     struct line_out_settings line_out;
 };
 
-void adau1361_load_defaults(struct adau1361_local *dev);
+static void adau1361_load_defaults(struct adau1361_local *dev);
 
 #endif  // #ifdef ADAU1361_H

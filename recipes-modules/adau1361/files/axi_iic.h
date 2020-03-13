@@ -51,7 +51,7 @@
 #define INTERRUPT_TX_FIFO_HALF_EMPTY_MASK 0x80
 #define INTERRUPT_NOT_ADDRESSED_AS_SLAVE_MASK 0x40
 #define INTERRUPT_ADDRESSED_AS_SLAVE_MASK 0x20
-#define INTERRUPT_IIC_BUS_NOT_EMPTY_MASK 0x10
+#define INTERRUPT_BUS_NOT_BUSY_MASK 0x10
 #define INTERRUPT_RX_FIFO_FULL_MASK 0x08
 #define INTERRUPT_TX_FIFO_EMPTY_MASK 0x04
 #define INTERRUPT_TX_ERROR_MASK 0x02
@@ -86,6 +86,7 @@ struct iic_local {
 	int tx_msg_pos;  // Next byte of current message to be written to the TX FIFO
 	struct mutex tx_lock;  // Lock for accessing the TX FIFO
 	uint32_t tx_messages;  // Number of messages that still require sending
+	uint8_t rx_data;  // Byte received from the I2C bus
 
 };
 
@@ -96,8 +97,9 @@ irqreturn_t iic_irq(int irq, void *dev_p);
 irqreturn_t iic_irq_process(int irq, void *dev_p);
 
 // Basic read/write to I2C device registers
-uint32_t iic_write(struct iic_local *dev, uint16_t reg_address, uint8_t data);
-uint32_t iic_read(struct iic_local *dev, uint16_t reg_address);
+void iic_write_single(struct iic_local *dev, uint16_t reg_address, uint8_t data);
+void iic_write_block(struct iic_local *dev, uint16_t reg_address, uint8_t *data, uint8_t data_length);
+uint8_t iic_read_single(struct iic_local *dev, uint16_t reg_address);
 
 
 #endif  // define IIC_H

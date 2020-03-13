@@ -37,7 +37,7 @@ static void adau1361_load_defaults(struct adau1361_local *dev){
 	dev->operational_mode = NORMAL;
 	dev->left_record_mixer.input_mode = IN_N;
 	dev->left_record_mixer.gain = 0;
-	dev->right_record_mixer = INPUT_DISABLED;
+	dev->right_record_mixer.input_mode = INPUT_DISABLED;
 
 	// Misc
 	dev->bclk_pol = RISING_EDGE;
@@ -132,7 +132,7 @@ static int adau1361_probe(struct platform_device *pdev)
 
 	// Initialise I2C peripheral
 	iic_init(&adau1361_dev->iic);
-	iic_write(&adau1361_dev->iic, 0x4019, 0xAA);
+	iic_read_single(&adau1361_dev->iic, 0x4000);
 
 	#ifdef DEBUG
 		printk(KERN_INFO "ADAU1361: All done, returning 0 now");
