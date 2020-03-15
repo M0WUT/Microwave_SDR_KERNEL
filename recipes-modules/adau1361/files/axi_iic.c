@@ -234,10 +234,22 @@ void iic_wait(struct iic_local *dev){
 }
 
 // Writes to a single register address on the I2C slave device
-void iic_write_single(struct iic_local *dev, uint16_t reg_address, uint8_t data) {
+int iic_write_single(struct iic_local *dev, uint16_t reg_address, uint8_t data) {
     uint8_t x = data;
+    uint8_t readback;
     iic_write_block(dev, reg_address, &x, 1);
+    #ifdef IIC_VERIFY
+        readback = iic_read_single(dev, reg_address);
+        if(readback != data) {
+            printk(KERN_ERR "IIC: Error. Wrote %#04x to register %#06x. Readback: %04x",
+                data, reg_address, readback);
+            return -1;
+        }
+    #endif
+    return 0;
 }
+
+
 
 // Performs a block write (single address then multiple data bytes) on the I2C slave device
 void iic_write_block(struct iic_local *dev, uint16_t reg_address, uint8_t *data, uint8_t data_length) {

@@ -16,7 +16,12 @@
 ////////////////
 // DEBUG MODE //
 ////////////////
+
+// Enable verbose print statements (really slows down transactions)
 //#define DEBUG
+
+// Readback each register after writing to it to confirm it
+#define IIC_VERIFY
 
 /////////////////////////////////////////
 // Registers offsets from base address //
@@ -97,7 +102,7 @@ irqreturn_t iic_irq(int irq, void *dev_p);
 irqreturn_t iic_irq_process(int irq, void *dev_p);
 
 // Basic read/write to I2C device registers
-void iic_write_single(struct iic_local *dev, uint16_t reg_address, uint8_t data);
+int iic_write_single(struct iic_local *dev, uint16_t reg_address, uint8_t data);
 void iic_write_block(struct iic_local *dev, uint16_t reg_address, uint8_t *data, uint8_t data_length);
 uint8_t iic_read_single(struct iic_local *dev, uint16_t reg_address);
 
