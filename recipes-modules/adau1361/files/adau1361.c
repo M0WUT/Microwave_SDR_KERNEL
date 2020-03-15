@@ -98,8 +98,8 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 	data = 0;
 
 	// Enable the PLL if needed
-	if  (dev_p->pll.pll_mode == PLL_DISABLED) {
-	 	data |= 0x80;
+	if  (dev_p->pll.pll_mode != PLL_DISABLED) {
+	 	data |= (1 << 3);
 	}
 
 	// Set Core Clock Divider ratio
@@ -144,7 +144,7 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 
 	// Record Mixer Left Control Registers
 	// TODO implement gain control
-	switch(dev_p->left_record_mixer.input_mode){
+	switch(dev_p->left_record_mixer.input_mode) {
 		case DIGITAL_MICROPHONE:  // Deliberate fallthrough
 		case INPUT_DISABLED:
 			x[0] = 0;  // Mute LINP, LINN and disable mixer
@@ -172,7 +172,7 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 
 	// Record Mixer Right Control Registers
 	// TODO implement gain control
-	switch(dev_p->right_record_mixer.input_mode){
+	switch(dev_p->right_record_mixer.input_mode) {
 		case DIGITAL_MICROPHONE:  // Deliberate fallthrough
 		case INPUT_DISABLED:
 			x[0] = 0;  // Mute LINP, LINN and disable mixer

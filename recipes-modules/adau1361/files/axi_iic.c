@@ -225,8 +225,7 @@ void iic_wait(struct iic_local *dev){
     #ifdef DEBUG
         printk(KERN_INFO "Starting waiting");
     #endif
-    while(!(reg_read(dev, OFFSET_SR) & 0x04));
-    // Wait for end of busyness
+    msleep(1);
     while((reg_read(dev, OFFSET_SR) & 0x04));
     #ifdef DEBUG
         printk(KERN_INFO "Finished waiting");
