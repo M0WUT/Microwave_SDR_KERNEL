@@ -90,8 +90,4 @@
 };
 
 
-&AF_axi_iic_0 {
-	compatible = "m0wut,adau1361";
-	slave_address = <0x38>;
-};
 

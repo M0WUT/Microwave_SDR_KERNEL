@@ -1,7 +1,14 @@
 #ifndef ADAU1361_H
 #define ADAU1361_H
 
-#include "axi_iic.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <sys/ioctl.h>
 
 #define ADAU1361_REG_CLOCK_CONTROL 0x4000
 #define ADAU1361_REG_PLL_CONTROL 0x4002
@@ -48,8 +55,7 @@
 #define ADAU1361_REG_JACK_DETECT_PIN 0x4031
 #define ADAU1361_REG_DEJITTER 0x4036
 
-
-
+#define I2C_SLAVE_FORCE 0x0706  // Magic number to change the I2C slave address, not my code
 
 typedef enum {NORMAL, EXTREME_POWER_SAVING, POWER_SAVING, ENHANCED_PERFORMANCE} op_mode_t;
 typedef enum {INPUT_DISABLED, IN_P, IN_N, IN_DIFF, IN_AUX, DIGITAL_MICROPHONE} adc_input_t; 
@@ -57,7 +63,6 @@ typedef enum {FALLING_EDGE, RISING_EDGE} clk_polarity_t;
 typedef enum {OUTPUT_DISABLED, LEFT_INPUT_MIXER, RIGHT_INPUT_MIXER, AUX, LEFT_DAC, RIGHT_DAC} output_t;
 typedef enum {PLL_DISABLED, PLL_INTEGER, PLL_FRACTIONAL} pll_mode_t; // Have only implemented PLL_DISABLED
 typedef enum {FSx256, FSx512, FSx768, FSx1024} core_clock_ratio_t;
-
 
 struct pll_settings {
     // Let X = pll_input_divider
@@ -104,8 +109,9 @@ struct line_out_settings {
 
 struct adau1361_local {
 
-    // I2C settings
-	struct iic_local iic;
+    // I2C Device
+	int iic;  // File ID for I2C device
+    uint8_t slave_address;  // I2C device address for ADAU1361
 
     // General settings
     struct pll_settings pll;
@@ -129,5 +135,7 @@ struct adau1361_local {
 static int adau1361_init_device(struct adau1361_local *dev);
 static void adau1361_load_defaults(struct adau1361_local *dev);
 static int adau1361_update_full(struct adau1361_local *dev);
+static int iic_write_single(int iic, uint16_t reg_address, uint8_t data);
+static int iic_write_block(int iic, uint16_t reg_address, uint8_t *data, uint8_t data_length);
 
 #endif  // #ifdef ADAU1361_H
