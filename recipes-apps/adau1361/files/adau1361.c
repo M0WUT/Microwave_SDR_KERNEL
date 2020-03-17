@@ -18,18 +18,18 @@
 
 
 static int iic_write_single(int iic, uint16_t reg_address, uint8_t data){
-    printf("Writing data %#04x to address %#06x\n", data, reg_address);
+    //printf("Writing data %#04x to address %#06x\n", data, reg_address);
     uint8_t x = data;
     return(iic_write_block(iic, reg_address, &x, 1));
 }
 static int iic_write_block(int iic, uint16_t reg_address, uint8_t *data, uint8_t data_length){
-    printf("Writing block of %d bytes to address %#06x\n", data_length, reg_address);
     uint8_t x[data_length + 2];
     int i;
     x[0] = (reg_address >> 8) & 0xFF;
     x[1] = reg_address & 0xFF;
     for(i = 0; i < data_length; i++){
         x[i+2] = data[i];
+		printf("Writing data %#04x to register %#06x\n", data[i], reg_address + i);
     }
 
     int bytes_written = write(iic, x, data_length + 2);
@@ -48,7 +48,13 @@ static void adau1361_load_defaults(struct adau1361_local *dev_p){
 
 	// PLL
 	dev_p->pll.pll_mode = PLL_DISABLED;
+	dev_p->pll.pll_integer = 2;
+	dev_p->pll.pll_numerator = 0;
+	dev_p->pll.pll_denominator = 1;
+	dev_p->pll.pll_input_divider = 1;
+
 	dev_p->pll.core_clock_ratio = FSx256;
+	
 
 	// Inputs
 	//dev_p->mic_detect_enabled = 0;
@@ -58,7 +64,7 @@ static void adau1361_load_defaults(struct adau1361_local *dev_p){
 	dev_p->right_record_mixer.input_mode = INPUT_DISABLED;
 
 	// Misc
-	dev_p->bclk_pol = RISING_EDGE;
+	dev_p->bclk_pol = FALLING_EDGE;
 	dev_p->lrclk_pol = RISING_EDGE;
 
 	//Outputs
@@ -253,10 +259,10 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 	// TODO Implement control of these options rather than hardcoding
 	x[0] = 0;
 	if(dev_p->bclk_pol == RISING_EDGE)
-		x[0] |= 0x10;
+		x[0] |= (1 << 4);
 
 	if(dev_p->lrclk_pol == RISING_EDGE)
-		x[0] |= 0x80;
+		x[0] |= (1 << 3);
 
 	x[1] = (
 		(0b001 << 5) |  // 32 clock cycles per frame
@@ -311,7 +317,7 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 			x[0] = (
 				(0 << 6) |  // Mute Right DAC to left mixer
 				(0 << 5) |  // Mute Left DAC to left mixer
-				(0b0000 << 4) |  // Mute Left AUX to left mixer
+				(0b0000 << 1) |  // Mute Left AUX to left mixer
 				0  // Disable left mixer
 			);
 			x[1] = (
@@ -324,7 +330,7 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 			x[0] = (
 				(0 << 6) |  // Mute Right DAC to left mixer
 				(0 << 5) |  // Mute Left DAC to left mixer
-				(0b0000 << 4) |  // Mute Left AUX to left mixer
+				(0b0000 << 1) |  // Mute Left AUX to left mixer
 				1  // Enable left mixer
 			);
 			x[1] = (
@@ -337,7 +343,7 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 			x[0] = (
 				(0 << 6) |  // Mute Right DAC to left mixer
 				(0 << 5) |  // Mute Left DAC to left mixer
-				(0b0000 << 4) |  // Mute Left AUX to left mixer
+				(0b0000 << 1) |  // Mute Left AUX to left mixer
 				1  // Enable left mixer
 			);
 			x[1] = (
@@ -350,7 +356,7 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 			x[0] = (
 				(0 << 6) |  // Mute Right DAC to left mixer
 				(0 << 5) |  // Mute Left DAC to left mixer
-				(0b0110 << 4) |  // 0dB gain from Left AUX to left mixer
+				(0b0110 << 1) |  // 0dB gain from Left AUX to left mixer
 				1  // Enable left mixer
 			);
 			x[1] = (
@@ -363,8 +369,8 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 			x[0] = (
 				(0 << 6) |  // Mute Right DAC to left mixer
 				(1 << 5) |  // Enable Left DAC to left mixer
-				(0b0000 << 4) |  // Mute Left AUX to left mixer
-				0  // Disable left mixer
+				(0b0000 << 1) |  // Mute Left AUX to left mixer
+				1  // Enable left mixer
 			);
 			x[1] = (
 				(0b0000 << 4) |  // Mute right input mixer to left mixer
@@ -376,8 +382,8 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 			x[0] = (
 				(1 << 6) |  // Enable Right DAC to left mixer
 				(0 << 5) |  // Mute Left DAC to left mixer
-				(0b0000 << 4) |  // Mute Left AUX to left mixer
-				0  // Disable left mixer
+				(0b0000 << 1) |  // Mute Left AUX to left mixer
+				1  // Enable left mixer
 			);
 			x[1] = (
 				(0b0000 << 4) |  // Mute right input mixer to left mixer
@@ -392,79 +398,79 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 	switch(dev_p->right_playback_mixer.output_mode) {
 		case OUTPUT_DISABLED:
 			x[0] = (
-				(0 << 6) |  // Mute Right DAC to left mixer
-				(0 << 5) |  // Mute Left DAC to left mixer
-				(0b0000 << 4) |  // Mute Left AUX to left mixer
-				0  // Disable left mixer
+				(0 << 6) |  // Mute Right DAC to right mixer
+				(0 << 5) |  // Mute Left DAC to right mixer
+				(0b0000 << 1) |  // Mute Left AUX to right mixer
+				0  // Disable right mixer
 			);
 			x[1] = (
-				(0b0000 << 4) |  // Mute right input mixer to left mixer
-				0b0000  // Mute left input mixer to left mixer
+				(0b0000 << 4) |  // Mute right input mixer to right mixer
+				0b0000  // Mute left input mixer to right mixer
 			);
 			break;
 
 		case LEFT_INPUT_MIXER:
 			x[0] = (
-				(0 << 6) |  // Mute Right DAC to left mixer
-				(0 << 5) |  // Mute Left DAC to left mixer
-				(0b0000 << 4) |  // Mute Left AUX to left mixer
-				1  // Enable left mixer
+				(0 << 6) |  // Mute Right DAC to right mixer
+				(0 << 5) |  // Mute Left DAC to right mixer
+				(0b0000 << 1) |  // Mute Left AUX to right mixer
+				1  // Enable right mixer
 			);
 			x[1] = (
-				(0b0000 << 4) |  // Mute right input mixer to left mixer
-				0b0110  // 0dB gain from left input mixer to left mixer
+				(0b0000 << 4) |  // Mute right input mixer to right mixer
+				0b0110  // 0dB gain from left input mixer to right mixer
 			);
 			break;
 
 		case RIGHT_INPUT_MIXER:
 			x[0] = (
-				(0 << 6) |  // Mute Right DAC to left mixer
-				(0 << 5) |  // Mute Left DAC to left mixer
-				(0b0000 << 4) |  // Mute Left AUX to left mixer
-				1  // Enable left mixer
+				(0 << 6) |  // Mute Right DAC to right mixer
+				(0 << 5) |  // Mute Left DAC to right mixer
+				(0b0000 << 1) |  // Mute Left AUX to right mixer
+				1  // Enable right mixer
 			);
 			x[1] = (
-				(0b0110 << 4) |  // 0dB gain from right input mixer to left mixer
-				0b0000  // Mute left input mixer to left mixer
+				(0b0110 << 4) |  // 0dB gain from right input mixer to right mixer
+				0b0000  // Mute left input mixer to right mixer
 			);
 			break;
 
 		case AUX:
 			x[0] = (
-				(0 << 6) |  // Mute Right DAC to left mixer
-				(0 << 5) |  // Mute Left DAC to left mixer
-				(0b0110 << 4) |  // 0dB gain from Left AUX to left mixer
-				1  // Enable left mixer
+				(0 << 6) |  // Mute Right DAC to right mixer
+				(0 << 5) |  // Mute Left DAC to right mixer
+				(0b0110 << 1) |  // 0dB gain from Left AUX to right mixer
+				1  // Enable right mixer
 			);
 			x[1] = (
-				(0b0000 << 4) |  // Mute left input mixer to left mixer
-				0b0000  // Mute left input mixer to left mixer
+				(0b0000 << 4) |  // Mute left input mixer to right mixer
+				0b0000  // Mute left input mixer to right mixer
 			);
 			break;
 			
 		case LEFT_DAC:
 			x[0] = (
-				(0 << 6) |  // Mute Right DAC to left mixer
-				(1 << 5) |  // Enable Left DAC to left mixer
-				(0b0000 << 4) |  // Mute Left AUX to left mixer
-				0  // Disable left mixer
+				(0 << 6) |  // Mute Right DAC to right mixer
+				(1 << 5) |  // Enable Left DAC to right mixer
+				(0b0000 << 1) |  // Mute Left AUX to right mixer
+				1  // Enable right mixer
 			);
 			x[1] = (
-				(0b0000 << 4) |  // Mute right input mixer to left mixer
-				0b0000  // Mute left input mixer to left mixer
+				(0b0000 << 4) |  // Mute right input mixer to right mixer
+				0b0000  // Mute left input mixer to right mixer
 			);
 			break;
 
 		case RIGHT_DAC:
 			x[0] = (
-				(1 << 6) |  // Enable Right DAC to left mixer
-				(0 << 5) |  // Mute Left DAC to left mixer
-				(0b0000 << 4) |  // Mute Left AUX to left mixer
-				0  // Disable left mixer
+				(1 << 6) |  // Enable Right DAC to right mixer
+				(0 << 5) |  // Mute Left DAC to right mixer
+				(0b0000 << 1) |  // Mute Left AUX to right mixer
+				1  // Disable right mixer
 			);
 			x[1] = (
-				(0b0000 << 4) |  // Mute right input mixer to left mixer
-				0b0000  // Mute left input mixer to left mixer
+				(0b0000 << 4) |  // Mute right input mixer to right mixer
+				0b0000  // Mute left input mixer to right mixer
 			);
 			break;
 	}
@@ -537,7 +543,7 @@ static int adau1361_update_full(struct adau1361_local *dev_p){
 	// Yes, I know this does nothing, just acknowledgement that this bit is 0
 	data |= 0;  // Set Line Out outputs into line out mode
 
-	iic_write_single(dev_p->iic, ADAU1361_REG_HP_RIGHT_VOL, data);
+	iic_write_single(dev_p->iic, ADAU1361_REG_LINE_RIGHT_VOL, data);
 
 	// Mono output
 	// TODO: Add support for MONO audio rather than just headphone common mode
