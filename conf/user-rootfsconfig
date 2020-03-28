@@ -7,3 +7,6 @@ CONFIG_adau1361
 CONFIG_vdmafb
 CONFIG_skeleton
 CONFIG_adau1361
+CONFIG_SDR-Status-Registers
+CONFIG_status
+CONFIG_statusregs

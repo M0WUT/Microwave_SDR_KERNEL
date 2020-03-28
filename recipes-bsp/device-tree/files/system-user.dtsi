@@ -89,5 +89,8 @@
         };
 };
 
+&SDR_Status_Registers_0 {
+	compatible = "m0wut,statusregs";
+};
 
 
