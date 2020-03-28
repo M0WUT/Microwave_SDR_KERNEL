@@ -6,9 +6,9 @@
 #define OFFSET_DISPMODE 0x02
 #define OFFSET_RXMODE 0x03
 #define OFFSET_PHACC1 0x04
-#define OFFSET_ADCCLK 0x05
 
-//#define DEBUG
+
+#define DEBUG
 
 struct disp_settings {
     bool enabled;
@@ -23,7 +23,7 @@ struct adc_settings {
 typedef enum {AM = 0} rfMode_t;
 
 struct rf_settings {
-    unsigned int frequency;
+    unsigned int ifFreq;
     rfMode_t mode;
     unsigned int transverterOffset;  // Offset added by external transverters
 };

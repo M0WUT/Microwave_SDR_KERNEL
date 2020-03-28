@@ -29,7 +29,7 @@
 #include <linux/of_platform.h>
 #include <linux/fs.h>
 #include <asm/uaccess.h>
-#include <asm/div64.h>
+#include <linux/math64.h>
 
 #include "statusregs.h"
 
@@ -57,7 +57,7 @@ static unsigned int read(int offset){
 	unsigned int x;
 	x = ioread32(lp->base_addr + 4 * offset);
 	#ifdef DEBUG 
-		printk(KERN_INFO "Read value %#010x from register %d", x, offset);
+		printk(KERN_INFO "Read value %u (%#010x) from register %d", x, x, offset);
 	#endif
 	return x;
 }
@@ -65,7 +65,7 @@ static unsigned int read(int offset){
 
 static void write(int offset, unsigned int data){
 	#ifdef DEBUG
-		printk(KERN_INFO "Writing data %010x to address %d", data, offset);
+		printk(KERN_INFO "Writing data %u (%#010x) to address %d", data, data, offset);
 	#endif
 	iowrite32(data, lp->base_addr + 4 * offset);
 }
@@ -88,26 +88,32 @@ static int status_open(struct inode *inode_p, struct file *file_p){
 	// Write JSON to buffer
 	sprintf(buffer,
 "{\n\
-	\"IDconfirmed\": \"%s\",\n\
+	\"idConfirmed\": \"%s\",\n\
 	\"bitstreamVersion\": %u.%u,\n\
-	\"displayFrequency\": %u,\n\
-	\"displayEnabled\": \"%s\",\n\
-	\"mode\": \"%s\",\n\
-	\"adcRandom\": \"%s\",\n\
-	\"adcDither\": \"%s\",\n\
-	\"phaseAccumulator1\": %u, \n\
-	\"adcClockFrequency\": %u \n\
+	\"display\": {\n\
+		\"enabled\": \"%s\"\n\
+	},\n\
+	\"adc\": {\n\
+		\"clockFrequency\": %u,\n\
+		\"random\": \"%s\",\n\
+		\"dither\": \"%s\"\n\
+	},\n\
+	\"rf\": {\n\
+		\"ifFrequency\": %u,\n\
+		\"mode\": \"%s\",\n\
+		\"transverterOffset\": %u\n\
+	}\n\
 }\n",
 	((read(OFFSET_ID) & 0xFFFF0000) == 0xBEEF0000 ? "True" : "False"),
 	(read(OFFSET_ID) >> 8) & 0xFF,
 	read(OFFSET_ID) & 0xFF,
-	read(OFFSET_DISPFREQ) * (read(OFFSET_DISPMODE) & 0x01 ? 10 : 1),
 	(read(OFFSET_DISPMODE) & 0x02 ? "True" : "False"),
-	((read(OFFSET_RXMODE) >> 8) & 0xFF) == 0 ? "AM" : "Undefined",
+	lp->adc.clockFreq,
 	(read(OFFSET_RXMODE) & 0x02 ? "True" : "False"),
 	(read(OFFSET_RXMODE) & 0x01 ? "True" : "False"),
-	read(OFFSET_PHACC1),
-	lp->adc.clockFreq);
+	lp->rf.ifFreq,
+	((read(OFFSET_RXMODE) >> 8) & 0xFF) == 0 ? "AM" : "Undefined",
+	lp->rf.transverterOffset);
 
 	msgPtr = buffer;
 
@@ -125,7 +131,7 @@ void init_vars(void){
 	lp->adc.dither = 1;
 
 	// RF
-	lp->rf.frequency = 1e6;
+	lp->rf.ifFreq = 1e6;
 	lp->rf.mode = AM;
 	lp->rf.transverterOffset = 0;
 }
@@ -133,15 +139,15 @@ void init_vars(void){
 // Update all status registers that can be written to
 void update_all(void){
 
-	int bigFreq;  // Is frequency needing to use high range display
+	int bigFreq;  // Is frequency needing to use high range display?
 
-	bigFreq = (lp->rf.frequency > 4e9 ? 1 : 0);
+	bigFreq = (lp->rf.ifFreq + lp->rf.transverterOffset > 4e9 ? 1 : 0);
 
 	// Display
 	if(bigFreq)
-		write(OFFSET_DISPFREQ, lp->rf.frequency);  // DEBUG
+		write(OFFSET_DISPFREQ, lp->rf.ifFreq + lp->rf.transverterOffset);  // DEBUG
 	else
-		write(OFFSET_DISPFREQ, lp->rf.frequency);
+		write(OFFSET_DISPFREQ, lp->rf.ifFreq + lp->rf.transverterOffset);
 
 	write(OFFSET_DISPMODE,
 		(lp->display.enabled << 1) |
@@ -156,8 +162,11 @@ void update_all(void){
 	);
 
 	// Phase Accumulator
-	write(OFFSET_PHACC1, 7);  // DEBUG
-	printk(KERN_INFO "Phase Accumulator Value: %lu", read(OFFSET_PHACC1));		
+	unsigned long long frequency = (unsigned long long) lp->rf.ifFreq;
+	unsigned long long x  = div_u64(frequency << 32, lp->adc.clockFreq);
+		
+	write(OFFSET_PHACC1, x);
+	
 }
 
 
