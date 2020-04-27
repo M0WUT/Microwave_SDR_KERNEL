@@ -84,7 +84,7 @@
                 reg = <0x43000000 0x10000>;
                 dmas = <&Video_Out_axi_vdma_0 0>;
                 num-fstores = <1>;
-                resolution = "720p";
+                resolution = "600p";
                 format = "rgb565";
         };
 };
@@ -93,4 +93,13 @@
 	compatible = "m0wut,statusregs";
 };
 
+
+/{
+	ezdma0 {
+		compatible = "ezdma";
+		dmas = <&FFT_axi_dma_0 0>;
+		dma-names = "fft_dma";
+		ezdma,dirs = <1>;
+	};
+};
 

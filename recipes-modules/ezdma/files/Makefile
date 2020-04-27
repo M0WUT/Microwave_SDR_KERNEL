@@ -1,4 +1,4 @@
-obj-m := vdmafb.o
+obj-m := ezdma.o
 
 SRC := $(shell pwd)
 

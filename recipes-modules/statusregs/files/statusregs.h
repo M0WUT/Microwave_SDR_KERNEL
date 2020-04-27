@@ -1,6 +1,8 @@
 #ifndef statusregs_H
 #define statusregs_H
 
+#define MAJOR_NUMBER 240
+
 #define OFFSET_ID 0x00
 #define OFFSET_DISPFREQ 0x01
 #define OFFSET_DISPMODE 0x02
@@ -8,7 +10,7 @@
 #define OFFSET_PHACC1 0x04
 
 
-#define DEBUG
+//#define DEBUG
 
 struct disp_settings {
     bool enabled;

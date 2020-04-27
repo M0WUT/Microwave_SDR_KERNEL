@@ -10,3 +10,5 @@ CONFIG_adau1361
 CONFIG_SDR-Status-Registers
 CONFIG_status
 CONFIG_statusregs
+CONFIG_ezdma
+CONFIG_dma-test

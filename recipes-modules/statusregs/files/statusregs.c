@@ -30,6 +30,8 @@
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 #include <linux/math64.h>
+#include <linux/device.h>
+#include <linux/kdev_t.h>
 
 #include "statusregs.h"
 
@@ -202,6 +204,16 @@ static ssize_t status_write(struct file *file_p, const char *inBuffer_p, size_t 
 }
 
 
+// Function to set permission to R/W for all users
+static char *status_devnode(struct device *dev, umode_t *mode)
+{
+        if (!mode)
+                return NULL;
+        if (dev->devt == MKDEV(MAJOR_NUMBER, 0))
+                *mode = 0666;
+        return NULL;
+}
+
 static int statusregs_probe(struct platform_device *pdev)
 {
 	struct resource *r_mem; /* IO mem resources */
@@ -243,6 +255,16 @@ static int statusregs_probe(struct platform_device *pdev)
 	init_vars();
 	update_all();
 
+	static dev_t myDev;
+	static struct class *cl;
+
+	myDev = MKDEV(MAJOR_NUMBER, 0);
+	cl = class_create(THIS_MODULE, "status");
+    cl->devnode = status_devnode;
+	device_create(cl, NULL, myDev, NULL, "status");
+
+	printk(KERN_INFO "StatusRegs: Loading");
+
 	return 0;
 error2:
 	release_mem_region(lp->mem_start, lp->mem_end - lp->mem_start + 1);
@@ -256,6 +278,8 @@ static int statusregs_remove(struct platform_device *pdev)
 {
 	struct device *dev_p = &pdev->dev;
 	struct statusregs_local *lp = dev_get_drvdata(dev_p);
+
+	
 	iounmap(lp->base_addr);
 	release_mem_region(lp->mem_start, lp->mem_end - lp->mem_start + 1);
 	kfree(lp);
@@ -283,12 +307,8 @@ static struct platform_driver statusregs_driver = {
 };
 
 static int __init statusregs_init(void)
-{
-	
-	major = register_chrdev(0, DRIVER_NAME, &fops);
-	printk(KERN_INFO "Status registered as device major number : %d", major);
-
-
+{	
+	register_chrdev(MAJOR_NUMBER, DRIVER_NAME, &fops);
 	return platform_driver_register(&statusregs_driver);
 }
 

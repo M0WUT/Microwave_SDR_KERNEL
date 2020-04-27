@@ -14,9 +14,10 @@
  * resolution: 	string, changing this requires the video section to be clocked
  * 				at different speed. All supported options are listed
  * 
- * resolution	Clock Speed (MHz)	Horizontal pixels	Vertical lines
- * "720p" 		74.25				1280				720
- * "1080p"		165					1920				1080
+ * resolution		Clock Speed (MHz)	Horizontal pixels	Vertical lines
+ * "720p"	 		74.25				1280				720
+ * "720p_rotated" 	70					720					1280
+ * "1080p"			165					1920				1080
  * 
  * format: bits per pixel (bpp) and how they are packed. VDMA settings will need to match
  * All supported options are listed (VDMA really likes bytes per pixel to be a power of 2)
@@ -29,7 +30,7 @@
  		axi_vdma_vga: axi_vdma_vga@7e000000 {
 			compatible = "topic,vdma-fb";
 			reg = <<0x43000000 0x10000>;
-			dmas = <&axi_vdma_0 0>;		
+			dmas = <&axi_vdma_0 0>;
 			num-fstores = <1>;
 			resolution = "720p"
 			format = "rgba"
@@ -159,20 +160,32 @@ static void vdmafb_init_var(struct vdmafb_dev *fbdev, struct platform_device *pd
 		var->yres = 720;
 		var->pixclock = KHZ2PICOS(74250);
 	}
+	else if (!strcmp(resolution_string, "720p_rotated"))
+	{
+		var->xres = 720;
+		var->yres = 1280;
+		var->pixclock = KHZ2PICOS(69780);
+	}
 	else if (!strcmp(resolution_string, "1080p"))
 	{
 		var->xres = 1920;
 		var->yres = 1080;
 		var->pixclock = KHZ2PICOS(165000);
 	}
+	else if (!strcmp(resolution_string, "600p"))
+	{
+		var->xres = 1024;
+		var->yres = 600;
+		var->pixclock = KHZ2PICOS(49121);
+	}
 	else
 	{
 		dev_err(&pdev->dev, "Unsupported resolution passed to VDMA module\n");
 	}
 	
-	#ifdef DEBUG
-		printk(KERN_INFO "Framebuffer resolution set to %u x %u", var->xres, var->yres);
-	#endif
+	
+	printk(KERN_INFO "VDMAFB: Resolution set to %u x %u", var->xres, var->yres);
+	
 
 	/*
 	 * Xilinx VDMA requires clients to submit exactly the number of frame
@@ -275,7 +288,7 @@ static int vdmafb_probe(struct platform_device *pdev)
 	struct resource *res;
 	int returnCode = 0;
 
-	printk(KERN_INFO "Starting to load framebuffer driver, wish me luck!\n");
+	printk(KERN_INFO "VDMAFB: Loading\n");
 	fbdev = devm_kzalloc(&pdev->dev, sizeof(*fbdev), GFP_KERNEL);
 	if (!fbdev) {
 		returnCode = -ENOMEM;
@@ -357,6 +370,7 @@ static int vdmafb_probe(struct platform_device *pdev)
 		goto err_unregister_fb;
 	}
 
+	printk(KERN_INFO "VDMAFB: Loaded successfully\n");
 	return 0;
 
 err_unregister_fb:
