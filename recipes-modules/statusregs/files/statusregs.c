@@ -133,9 +133,12 @@ void init_vars(void){
 	lp->adc.dither = 1;
 
 	// RF
-	lp->rf.ifFreq = 1e6;
+	lp->rf.ifFreq = 28e6;
 	lp->rf.mode = AM;
 	lp->rf.transverterOffset = 0;
+
+	// FFT
+	lp->fft.fftFreq = 28e6;
 }
 
 // Update all status registers that can be written to
@@ -168,9 +171,14 @@ void update_all(void){
 	unsigned long long x  = div_u64(frequency << 32, lp->adc.clockFreq);
 		
 	write(OFFSET_PHACC1, x);
+
+	// FFT Phase Accumulator
+	frequency = (unsigned long long) lp->fft.fftFreq;
+	x  = div_u64(frequency << 32, lp->adc.clockFreq);
+		
+	write(OFFSET_FFTACC, x);
 	
 }
-
 
 
 static int status_release(struct inode *inode_p, struct file *file_p){
@@ -263,7 +271,7 @@ static int statusregs_probe(struct platform_device *pdev)
     cl->devnode = status_devnode;
 	device_create(cl, NULL, myDev, NULL, "status");
 
-	printk(KERN_INFO "StatusRegs: Loading");
+	printk(KERN_INFO "StatusRegs: Loaded");
 
 	return 0;
 error2:

@@ -95,7 +95,7 @@
 
 
 /{
-	ezdma0 {
+	ezdma {
 		compatible = "ezdma";
 		dmas = <&FFT_axi_dma_0 0>;
 		dma-names = "fft_dma";

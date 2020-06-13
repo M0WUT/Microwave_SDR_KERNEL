@@ -8,9 +8,10 @@
 #define OFFSET_DISPMODE 0x02
 #define OFFSET_RXMODE 0x03
 #define OFFSET_PHACC1 0x04
+#define OFFSET_FFTACC 0x05
 
 
-//#define DEBUG
+#define DEBUG
 
 struct disp_settings {
     bool enabled;
@@ -30,6 +31,10 @@ struct rf_settings {
     unsigned int transverterOffset;  // Offset added by external transverters
 };
 
+struct fft_settings {
+    unsigned int fftFreq;
+};
+
 static struct statusregs_local {
 	unsigned int mem_start;
 	unsigned int mem_end;
@@ -37,6 +42,7 @@ static struct statusregs_local {
     struct disp_settings display;
     struct adc_settings adc;
     struct rf_settings rf;
+    struct fft_settings fft;
 };
 
 static int status_open(struct inode *inode_p, struct file *file_p);
@@ -44,6 +50,7 @@ static int status_release(struct inode *inode_p, struct file *file_p);
 static ssize_t status_read(struct file *file_p, char *outBuffer_p, size_t length, loff_t *offset);
 static ssize_t status_write(struct file *file_p, const char *inBuffer_p, size_t length, loff_t *offset);
 void init_vars(void);
+int set_fft_freq(uint32_t freq);
 void update_all(void);
 
 #endif //  ifdef statusregs_H
